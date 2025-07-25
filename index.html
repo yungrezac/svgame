@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>SV GAME</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0d0d0d;
+            --primary-color: #fdd835;
+            --secondary-color: #2196f3;
+            --green-color: #4caf50;
+            --red-color: #f44336;
+            --text-color: #ffffff;
+            --container-bg: #1a1a1a;
+            --border-radius: 20px;
+            --shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            --safe-area-inset-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0d0d0d;
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 15px 15px calc(15px + var(--safe-area-inset-bottom)) 15px;
+            box-sizing: border-box;
+            overflow: hidden;
+            -webkit-user-select: none; user-select: none;
+        }
+
+        .app-container { width: 100%; max-width: 480px; height: 100%; display: flex; flex-direction: column; text-align: center; }
+        .content { flex-grow: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+        .content::-webkit-scrollbar { display: none; }
+        .page { display: none; flex-direction: column; height: 100%; }
+        .page.active { display: flex; }
+
+        .header { padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: var(--border-radius); margin-bottom: 10px; }
+        .score-display { display: flex; align-items: center; justify-content: center; font-size: 2em; font-weight: 800; color: var(--primary-color); text-shadow: 0 0 10px var(--primary-color); }
+        .score-display img { width: 30px; height: 30px; margin-left: 10px; }
+        .passive-income-display { font-size: 0.8em; opacity: 0.7; margin-top: 3px; }
+
+        .energy-bar-container { width: 100%; margin-bottom: 10px; }
+        .energy-stats { display: flex; justify-content: space-between; font-size: 0.9em; margin-bottom: 5px; padding: 0 5px; }
+        .energy-bar { width: 100%; height: 12px; background-color: var(--container-bg); border-radius: 6px; overflow: hidden; }
+        .energy-bar-fill { height: 100%; width: 100%; background: linear-gradient(90deg, var(--secondary-color), #4fc3f7); border-radius: 6px; transition: width 0.2s ease-out; }
+
+        .game-zone { flex-grow: 1; display: flex; align-items: center; justify-content: center; position: relative; }
+        #main-tapper { width: 65%; max-width: 250px; cursor: pointer; transition: transform 0.1s ease-out; animation: breathing 4s ease-in-out infinite; filter: drop-shadow(0 0 15px rgba(253, 216, 53, 0.3)); }
+        #main-tapper:active { transform: scale(0.95); }
+        @keyframes breathing { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        .floating-text { position: absolute; font-size: 2em; font-weight: bold; color: var(--primary-color); opacity: 1; animation: floatUp 1.5s ease-out forwards; pointer-events: none; text-shadow: 0 0 10px rgba(253, 216, 53, 0.7); }
+        @keyframes floatUp { to { opacity: 0; transform: translateY(-100px) scale(1.5); } }
+        
+        .boost-timer { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.5); color: var(--primary-color); padding: 5px 15px; border-radius: 10px; font-weight: 600; }
+
+        .section { display: grid; grid-template-columns: 1fr; gap: 12px; width: 100%; padding: 10px 0; }
+        .section-title { font-size: 1.2em; font-weight: 700; text-align: left; margin-bottom: 5px; padding-left: 10px; }
+        
+        .item-button { background-color: var(--container-bg); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: var(--border-radius); padding: 15px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; }
+        .item-button.can-claim { animation: glow 1.5s infinite alternate; }
+        @keyframes glow { from { border-color: var(--green-color); box-shadow: 0 0 10px var(--green-color); } to { border-color: rgba(255, 255, 255, 0.1); box-shadow: none; } }
+        .item-button.disabled { opacity: 0.5; cursor: not-allowed; background-color: var(--container-bg); }
+        .item-icon { font-size: 1.8em; margin-right: 15px; width: 40px; text-align: center; }
+        .item-details { flex-grow: 1; text-align: left; }
+        .item-title { font-size: 1em; font-weight: 600; }
+        .item-description { font-size: 0.8em; opacity: 0.7; margin: 2px 0; }
+        .item-cost { display: flex; align-items: center; font-size: 0.9em; font-weight: 600; color: var(--primary-color); }
+        .item-cost img { width: 16px; height: 16px; margin-left: 5px; }
+        
+        /* Skins */
+        .skins-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .skin-card { background: var(--container-bg); border-radius: var(--border-radius); padding: 10px; border: 2px solid rgba(255, 255, 255, 0.1); transition: all 0.2s; }
+        .skin-card.active { border-color: var(--primary-color); box-shadow: 0 0 15px var(--primary-color); }
+        .skin-card.locked { opacity: 0.6; }
+        .skin-card img { width: 100%; height: 100px; object-fit: contain; }
+        .skin-button { background: var(--primary-color); color: #000; border: none; border-radius: 10px; padding: 8px; margin-top: 10px; font-weight: 600; width: 100%; cursor: pointer; }
+        .skin-button.equipped { background: var(--green-color); color: #fff; }
+        
+        /* Leagues & Leaderboard */
+        .league-card { background: linear-gradient(45deg, #333, #111); padding: 20px; border-radius: var(--border-radius); margin-bottom: 20px; }
+        .league-name { font-size: 1.5em; font-weight: 800; margin-bottom: 10px; }
+        .league-progress-bar { width: 100%; height: 8px; background: rgba(0,0,0,0.3); border-radius: 4px; margin-top: 5px; }
+        .league-progress-fill { height: 100%; background: var(--primary-color); border-radius: 4px; }
+        .leaderboard-entry { display: flex; align-items: center; padding: 10px; margin-bottom: 5px; background: var(--container-bg); border-radius: 10px; }
+        .leaderboard-entry.is-user { background: var(--primary-color); color: #000; }
+        .lb-rank { font-weight: 600; width: 30px; }
+        .lb-name { flex-grow: 1; text-align: left; }
+        .lb-score { font-weight: 600; }
+
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: var(--container-bg); padding: 30px; border-radius: var(--border-radius); text-align: center; animation: modal-pop 0.3s ease-out; }
+        @keyframes modal-pop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-title { font-size: 1.5em; font-weight: 700; margin-bottom: 10px; }
+        .modal-reward { font-size: 2em; color: var(--primary-color); font-weight: 800; margin: 20px 0; }
+        .modal-button { background: var(--primary-color); color: #000; border: none; border-radius: 10px; padding: 12px 25px; font-weight: 600; cursor: pointer; }
+
+        .navigation { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; margin-top: auto; padding-top: 15px; }
+        .nav-button { background-color: var(--container-bg); border: none; border-radius: var(--border-radius); padding: 12px 5px; cursor: pointer; transition: all 0.2s; font-size: 1.2em; font-weight: 600; color: var(--text-color); }
+        .nav-button.active { background-color: var(--primary-color); color: #000; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="content">
+            <div id="home-page" class="page active">
+                <div class="header">
+                    <div class="score-display"><span id="score">0</span><img src="https://i.ibb.co/GcJQ3Y3/roller-wheel.png"></div>
+                    <div class="passive-income-display">В секунду: +<span id="passive-income-rate">0</span></div>
+                </div>
+                <div class="energy-bar-container">
+                    <div class="energy-stats"><span><i class="fa-solid fa-bolt"></i> Энергия</span><span id="energy-display">500/500</span></div>
+                    <div class="energy-bar"><div id="energy-bar-fill" class="energy-bar-fill"></div></div>
+                </div>
+                <div class="game-zone" id="game-zone">
+                    <img src="https://i.postimg.cc/59D4Fjn5/5190567049226645064.png" id="main-tapper" alt="Тап-персонаж">
+                    <div id="boost-timer" class="boost-timer" style="display: none;"></div>
+                </div>
+            </div>
+
+            <div id="upgrades-page" class="page">
+                <div class="section">
+                    <h2 class="section-title">Бусты</h2>
+                    <div class="item-button" id="full-energy-boost"><div class="item-icon">⚡️</div><div class="item-details"><div class="item-title">Полная энергия</div><div class="item-description">Мгновенно восстановить всю энергию</div><div class="item-cost"><span id="full-energy-cost">100</span><img src="https://i.ibb.co/GcJQ3Y3/roller-wheel.png"></div></div></div>
+                    <div class="item-button" id="turbo-mode-boost"><div class="item-icon">🚀</div><div class="item-details"><div class="item-title">Турбо-режим</div><div class="item-description">Увеличивает силу тапа (x2) на 10 сек</div><div class="item-cost"><span id="turbo-mode-cost">250</span><img src="https://i.ibb.co/GcJQ3Y3/roller-wheel.png"></div></div></div>
+                </div>
+                <div class="section">
+                    <h2 class="section-title">Улучшения</h2>
+                    <div class="item-button" id="tap-power-upgrade"><div class="item-icon"><i class="fa-solid fa-hand-pointer"></i></div><div class="item-details"><div class="item-title">Сила тапа</div><div class="item-description">Текущий: +<span id="tap-power-value">1</span></div><div class="item-cost"><span id="tap-power-cost">10</span><img src="https://i.ibb.co/GcJQ3Y3/roller-wheel.png"></div></div></div>
+                    <div class="item-button" id="passive-income-upgrade"><div class="item-icon"><i class="fa-solid fa-hourglass-half"></i></div><div class="item-details"><div class="item-title">Пассивный доход</div><div class="item-description">В сек: +<span id="passive-income-value">0</span></div><div class="item-cost"><span id="passive-income-cost">50</span><img src="https://i.ibb.co/GcJQ3Y3/roller-wheel.png"></div></div></div>
+                    <div class="item-button" id="energy-cap-upgrade"><div class="item-icon"><i class="fa-solid fa-battery-full"></i></div><div class="item-details"><div class="item-title">Объём энергии</div><div class="item-description">Максимум: <span id="energy-cap-value">500</span></div><div class="item-cost"><span id="energy-cap-cost">150</span><img src="https://i.ibb.co/GcJQ3Y3/roller-wheel.png"></div></div></div>
+                    <div class="item-button" id="energy-regen-upgrade"><div class="item-icon"><i class="fa-solid fa-bolt-lightning"></i></div><div class="item-details"><div class="item-title">Реген. энергии</div><div class="item-description">В сек: +<span id="energy-regen-value">1</span></div><div class="item-cost"><span id="energy-regen-cost">200</span><img src="https://i.ibb.co/GcJQ3Y3/roller-wheel.png"></div></div></div>
+                </div>
+            </div>
+            
+            <div id="leagues-page" class="page">
+                <div class="league-card">
+                    <div class="league-name" id="league-name">Бронзовая Лига</div>
+                    <div class="item-description">До следующей лиги: <span id="score-to-next-league"></span></div>
+                    <div class="league-progress-bar"><div class="league-progress-fill" id="league-progress-fill"></div></div>
+                </div>
+                <div class="section">
+                    <h2 class="section-title">Лидерборд</h2>
+                    <div id="leaderboard-container"></div>
+                </div>
+                 <div class="section">
+                    <h2 class="section-title">Задания Лиги</h2>
+                    <div class="item-button" id="daily-reward-button"><div class="item-icon"><i class="fa-solid fa-calendar-day"></i></div><div class="item-details"><div class="item-title">Ежедневный бонус</div><div class="item-description" id="daily-reward-desc">Заберите свою награду!</div></div></div>
+                </div>
+            </div>
+
+            <div id="skins-page" class="page">
+                <div class="section">
+                    <h2 class="section-title">Магазин Скинов</h2>
+                    <div class="skins-grid" id="skins-container"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="navigation">
+            <button id="nav-home" class="nav-button active"><i class="fa-solid fa-house"></i></button>
+            <button id="nav-upgrades" class="nav-button"><i class="fa-solid fa-arrow-up-right-dots"></i></button>
+            <button id="nav-leagues" class="nav-button"><i class="fa-solid fa-trophy"></i></button>
+            <button id="nav-skins" class="nav-button"><i class="fa-solid fa-shirt"></i></button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="reward-modal">
+        <div class="modal-content">
+            <h2 class="modal-title" id="modal-title">Ежедневная Награда!</h2>
+            <div class="modal-reward" id="modal-reward">1,000 <img src="https://i.ibb.co/GcJQ3Y3/roller-wheel.png" style="width:35px; vertical-align: middle;"></div>
+            <button class="modal-button" id="modal-close-button">Отлично!</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        try { tg.ready(); tg.expand(); } catch (e) { console.error("TG Web App init failed."); }
+        
+        const $ = (id) => document.getElementById(id);
+        
+        const pages = { home: $('home-page'), upgrades: $('upgrades-page'), leagues: $('leagues-page'), skins: $('skins-page') };
+        const navButtons = { home: $('nav-home'), upgrades: $('nav-upgrades'), leagues: $('nav-leagues'), skins: $('nav-skins') };
+
+        // --- Game Configs ---
+        const LEAGUES = [
+            { name: "Бронзовая", threshold: 0, color: "#cd7f32" },
+            { name: "Серебряная", threshold: 100000, color: "#c0c0c0" },
+            { name: "Золотая", threshold: 1000000, color: "#ffd700" },
+            { name: "Платиновая", threshold: 10000000, color: "#e5e4e2" },
+            { name: "Алмазная", threshold: 100000000, color: "#b9f2ff" },
+        ];
+        const SKINS = [
+            { id: 'default', name: 'Классика', price: 0, url: 'https://i.postimg.cc/59D4Fjn5/5190567049226645064.png' },
+            { id: 'pirate', name: 'Пират', price: 50000, url: 'https://i.postimg.cc/cLsWG3Fm/013372f6-c751-4a20-a33a-4f84ef7b2343.png' },
+            { id: 'astro', name: 'Космонавт', price: 250000, url: 'https://i.ibb.co/hZ5yT9k/astro-duck.png' },
+            { id: 'king', name: 'Король Уток', price: 1000000, url: 'https://i.ibb.co/yQWpW5G/king-duck.png' },
+            { id: 'ghost', name: 'Призрак', price: 5000000, url: 'https://i.ibb.co/Y0g0GzG/ghost-duck.png' },
+            { id: 'cosmic', name: 'Космос', price: 25000000, url: 'https://i.ibb.co/zVwD3N7/cosmic-duck.png' },
+            { id: 'singularity', name: 'Чёрная Дыра', price: 100000000, url: 'https://i.ibb.co/W2dJcM4/singularity-duck.png' },
+        ];
+        const FAKE_LEADERBOARD = [ { name: "TopGamer", score: 120345678 }, { name: "ClickMaster", score: 98765432 }, { name: "DuckFan", score: 54321098 } ];
+
+        // --- Sound Engine ---
+        const sounds = {
+            tap: new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 0.1 } }).toDestination(),
+            buy: new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 0.2 } }).toDestination(),
+            reward: new Tone.Synth({ oscillator: { type: 'sawtooth' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.1 } }).toDestination(),
+        };
+
+        let gameState = {};
+        const defaultGameState = {
+            score: 0, tapPower: 1, tapPowerCost: 10, passiveIncome: 0, passiveIncomeCost: 50,
+            energy: 500, maxEnergy: 500, maxEnergyCost: 150, energyRegenRate: 1, energyRegenCost: 200,
+            boosts: { fullEnergyCost: 100, turboModeCost: 250, isTurboActive: false, turboTimer: 0 },
+            lastDailyReward: 0,
+            skins: { unlocked: ['default'], active: 'default' },
+            username: tg.initDataUnsafe?.user?.first_name || 'Игрок',
+        };
+
+        function saveGame() { localStorage.setItem('svGameTapperState_v4', JSON.stringify(gameState)); }
+        function loadGame() {
+            const savedState = localStorage.getItem('svGameTapperState_v4');
+            gameState = savedState ? JSON.parse(savedState) : JSON.parse(JSON.stringify(defaultGameState));
+            Object.keys(defaultGameState).forEach(key => { if (typeof gameState[key] === 'undefined') gameState[key] = defaultGameState[key]; });
+            gameState.boosts.isTurboActive = false;
+            updateUI();
+        }
+
+        function formatNumber(num) {
+            num = Math.floor(num);
+            if (num < 1000) return num.toString();
+            if (num < 1e6) return (num / 1000).toFixed(1) + 'K';
+            if (num < 1e9) return (num / 1e6).toFixed(1) + 'M';
+            return (num / 1e9).toFixed(1) + 'B';
+        }
+        
+        function updateUI() {
+            $('score').textContent = formatNumber(gameState.score);
+            $('passive-income-rate').textContent = formatNumber(gameState.passiveIncome);
+            $('energy-display').textContent = `${Math.floor(gameState.energy)}/${gameState.maxEnergy}`;
+            $('energy-bar-fill').style.width = `${(gameState.energy / gameState.maxEnergy) * 100}%`;
+            
+            // Upgrades
+            $('tap-power-value').textContent = formatNumber(gameState.tapPower);
+            $('tap-power-cost').textContent = formatNumber(gameState.tapPowerCost);
+            $('passive-income-value').textContent = formatNumber(gameState.passiveIncome);
+            $('passive-income-cost').textContent = formatNumber(gameState.passiveIncomeCost);
+            $('energy-cap-value').textContent = formatNumber(gameState.maxEnergy);
+            $('energy-cap-cost').textContent = formatNumber(gameState.maxEnergyCost);
+            $('energy-regen-value').textContent = formatNumber(gameState.energyRegenRate);
+            $('energy-regen-cost').textContent = formatNumber(gameState.energyRegenCost);
+            
+            // Boosts
+            $('full-energy-cost').textContent = formatNumber(gameState.boosts.fullEnergyCost);
+            $('turbo-mode-cost').textContent = formatNumber(gameState.boosts.turboModeCost);
+            const boostTimerEl = $('boost-timer');
+            if(gameState.boosts.isTurboActive) {
+                boostTimerEl.style.display = 'block';
+                boostTimerEl.textContent = `🚀 ${Math.ceil(gameState.boosts.turboTimer / 1000)}с`;
+            } else { boostTimerEl.style.display = 'none'; }
+
+            updateDailyRewardUI();
+            updateLeaguesUI();
+            updateSkinsUI();
+            checkButtonsState();
+        }
+        
+        function updateDailyRewardUI() {
+            const oneDay = 24 * 60 * 60 * 1000;
+            const now = new Date().getTime();
+            const dailyButton = $('daily-reward-button');
+            if (now - gameState.lastDailyReward >= oneDay) {
+                dailyButton.classList.add('can-claim');
+                $('daily-reward-desc').textContent = 'Награда ждет!';
+            } else {
+                dailyButton.classList.remove('can-claim');
+                const timeLeft = oneDay - (now - gameState.lastDailyReward);
+                const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                $('daily-reward-desc').textContent = `Следующая через: ${hours}ч ${minutes}м`;
+            }
+        }
+
+        function updateLeaguesUI() {
+            const currentLeague = [...LEAGUES].reverse().find(l => gameState.score >= l.threshold);
+            const nextLeague = LEAGUES[LEAGUES.indexOf(currentLeague) + 1];
+            $('league-name').textContent = currentLeague.name;
+            $('league-name').style.color = currentLeague.color;
+
+            if (nextLeague) {
+                const progress = (gameState.score - currentLeague.threshold) / (nextLeague.threshold - currentLeague.threshold);
+                $('league-progress-fill').style.width = `${progress * 100}%`;
+                $('score-to-next-league').textContent = formatNumber(nextLeague.threshold - gameState.score);
+            } else {
+                $('league-progress-fill').style.width = '100%';
+                $('score-to-next-league').textContent = 'Вы на вершине!';
+            }
+            
+            // Leaderboard
+            const leaderboardData = [...FAKE_LEADERBOARD, { name: gameState.username + " (Вы)", score: gameState.score }]
+                .sort((a, b) => b.score - a.score);
+            const container = $('leaderboard-container');
+            container.innerHTML = '';
+            leaderboardData.forEach((player, index) => {
+                const isUser = player.name.includes("(Вы)");
+                container.innerHTML += `
+                    <div class="leaderboard-entry ${isUser ? 'is-user' : ''}">
+                        <div class="lb-rank">${index + 1}</div>
+                        <div class="lb-name">${player.name}</div>
+                        <div class="lb-score">${formatNumber(player.score)}</div>
+                    </div>`;
+            });
+        }
+        
+        function updateSkinsUI() {
+            const container = $('skins-container');
+            container.innerHTML = '';
+            SKINS.forEach(skin => {
+                const isUnlocked = gameState.skins.unlocked.includes(skin.id);
+                const isActive = gameState.skins.active === skin.id;
+                let buttonHtml;
+                if (isActive) {
+                    buttonHtml = `<button class="skin-button equipped" disabled>Экипирован</button>`;
+                } else if (isUnlocked) {
+                    buttonHtml = `<button class="skin-button" onclick="equipSkin('${skin.id}')">Выбрать</button>`;
+                } else {
+                    buttonHtml = `<button class="skin-button" onclick="buySkin('${skin.id}', ${skin.price})">Купить за ${formatNumber(skin.price)}</button>`;
+                }
+
+                container.innerHTML += `
+                    <div class="skin-card ${isActive ? 'active' : ''} ${!isUnlocked ? 'locked' : ''}">
+                        <img src="${skin.url}" alt="${skin.name}">
+                        <div class="item-title">${skin.name}</div>
+                        ${buttonHtml}
+                    </div>`;
+            });
+            $('main-tapper').src = SKINS.find(s => s.id === gameState.skins.active).url;
+        }
+
+        function checkButtonsState() {
+            const s = gameState.score;
+            $('tap-power-upgrade').classList.toggle('disabled', s < gameState.tapPowerCost);
+            $('passive-income-upgrade').classList.toggle('disabled', s < gameState.passiveIncomeCost);
+            $('energy-cap-upgrade').classList.toggle('disabled', s < gameState.maxEnergyCost);
+            $('energy-regen-upgrade').classList.toggle('disabled', s < gameState.energyRegenCost);
+            $('full-energy-boost').classList.toggle('disabled', s < gameState.boosts.fullEnergyCost || gameState.energy >= gameState.maxEnergy);
+            $('turbo-mode-boost').classList.toggle('disabled', s < gameState.boosts.turboModeCost || gameState.boosts.isTurboActive);
+        }
+
+        function handleTap(event) {
+            if (gameState.energy < 1) return;
+            gameState.energy -= 1;
+            const tapValue = gameState.boosts.isTurboActive ? gameState.tapPower * 2 : gameState.tapPower;
+            gameState.score += tapValue;
+            
+            try { tg.HapticFeedback.impactOccurred('light'); } catch(e){}
+            sounds.tap.triggerAttackRelease("C5", "8n", Tone.now());
+            
+            const text = document.createElement('div');
+            text.className = 'floating-text';
+            text.textContent = `+${formatNumber(tapValue)}`;
+            text.style.left = `${event.clientX - pages.home.getBoundingClientRect().left - 20}px`;
+            text.style.top = `${event.clientY - pages.home.getBoundingClientRect().top - 30}px`;
+            $('game-zone').appendChild(text);
+            setTimeout(() => text.remove(), 1500);
+            updateUI();
+        }
+        
+        function setupEventListeners() {
+            $('main-tapper').addEventListener('click', handleTap);
+            Object.keys(navButtons).forEach(key => navButtons[key].addEventListener('click', () => switchTab(key)));
+            
+            $('tap-power-upgrade').addEventListener('click', () => buyUpgrade('tapPower', 'tapPowerCost', 1.25));
+            $('passive-income-upgrade').addEventListener('click', () => buyUpgrade('passiveIncome', 'passiveIncomeCost', 1.35, 1));
+            $('energy-cap-upgrade').addEventListener('click', () => buyUpgrade('maxEnergy', 'maxEnergyCost', 1.5, 100));
+            $('energy-regen-upgrade').addEventListener('click', () => buyUpgrade('energyRegenRate', 'energyRegenCost', 1.8, 1));
+            
+            $('full-energy-boost').addEventListener('click', () => { if (buyBoost('fullEnergyCost')) gameState.energy = gameState.maxEnergy; });
+            $('turbo-mode-boost').addEventListener('click', () => {
+                if (!gameState.boosts.isTurboActive && buyBoost('turboModeCost')) {
+                    gameState.boosts.isTurboActive = true;
+                    gameState.boosts.turboTimer = 10000;
+                }
+            });
+            
+            $('daily-reward-button').addEventListener('click', () => {
+                if (new Date().getTime() - gameState.lastDailyReward >= 24 * 60 * 60 * 1000) {
+                    const reward = 1000;
+                    gameState.score += reward;
+                    gameState.lastDailyReward = new Date().getTime();
+                    showModal("Ежедневная Награда!", `${formatNumber(reward)} <img src="https://i.ibb.co/GcJQ3Y3/roller-wheel.png" style="width:35px; vertical-align: middle;">`);
+                    sounds.reward.triggerAttackRelease("C6", "8n");
+                    updateUI();
+                }
+            });
+            
+            $('modal-close-button').addEventListener('click', () => $('reward-modal').style.display = 'none');
+        }
+        
+        function switchTab(key) {
+            Object.values(pages).forEach(p => p.classList.remove('active'));
+            Object.values(navButtons).forEach(b => b.classList.remove('active'));
+            pages[key].classList.add('active');
+            navButtons[key].classList.add('active');
+        }
+
+        function buyUpgrade(valueKey, costKey, costMultiplier, amount = 1) {
+            if (gameState.score >= gameState[costKey]) {
+                sounds.buy.triggerAttackRelease("A4", "8n");
+                gameState.score -= gameState[costKey];
+                gameState[valueKey] += amount;
+                gameState[costKey] = Math.floor(gameState[costKey] * costMultiplier);
+                updateUI();
+            }
+        }
+        
+        function buyBoost(costKey) {
+            if (gameState.score >= gameState.boosts[costKey]) {
+                sounds.buy.triggerAttackRelease("B4", "8n");
+                gameState.score -= gameState.boosts[costKey];
+                gameState.boosts[costKey] = Math.floor(gameState.boosts[costKey] * 1.75);
+                updateUI();
+                return true;
+            }
+            return false;
+        }
+        
+        window.buySkin = (id, price) => {
+            if (gameState.score >= price) {
+                sounds.reward.triggerAttackRelease("C5", "8n");
+                gameState.score -= price;
+                gameState.skins.unlocked.push(id);
+                equipSkin(id);
+            }
+        }
+        
+        window.equipSkin = (id) => {
+            gameState.skins.active = id;
+            updateSkinsUI();
+        }
+
+        function showModal(title, reward) {
+            $('modal-title').textContent = title;
+            $('modal-reward').innerHTML = reward;
+            $('reward-modal').style.display = 'flex';
+        }
+
+        function gameLoop() {
+            const tick = 100; // 10 times per second
+            gameState.score += gameState.passiveIncome / (1000 / tick);
+            if (gameState.energy < gameState.maxEnergy) {
+                gameState.energy = Math.min(gameState.maxEnergy, gameState.energy + gameState.energyRegenRate / (1000 / tick));
+            }
+            if (gameState.boosts.isTurboActive) {
+                gameState.boosts.turboTimer -= tick;
+                if(gameState.boosts.turboTimer <= 0) gameState.boosts.isTurboActive = false;
+            }
+            // Update UI less frequently to save performance
+            if (Math.random() < 0.2) updateUI();
+        }
+
+        window.addEventListener('load', () => {
+            loadGame();
+            setupEventListeners();
+            setInterval(gameLoop, 100);
+            setInterval(saveGame, 5000); // Save progress every 5 seconds
+        });
+        window.addEventListener('beforeunload', saveGame);
+    </script>
+</body>
+</html>
