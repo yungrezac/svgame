@@ -8,25 +8,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <style>
-        /* Добавлены стили для запрета выделения */
-        * {
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            -khtml-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-        }
-        
-        img {
-            -webkit-user-drag: none;
-            -khtml-user-drag: none;
-            -moz-user-drag: none;
-            -o-user-drag: none;
-            user-drag: none;
-            pointer-events: none;
-        }
-        
         :root {
             --bg-color: #0d0d0d;
             --primary-color: #fdd835;
@@ -54,8 +35,7 @@
             padding: 15px 15px calc(15px + var(--safe-area-inset-bottom)) 15px;
             box-sizing: border-box;
             overflow: hidden;
-            -webkit-user-select: none;
-            user-select: none;
+            -webkit-user-select: none; user-select: none;
         }
 
         .app-container { width: 100%; max-width: 480px; height: 100%; display: flex; flex-direction: column; text-align: center; }
@@ -172,11 +152,11 @@
                     <div class="league-progress-bar"><div class="league-progress-fill" id="league-progress-fill"></div></div>
                 </div>
                 <div class="section">
-                    <h2 class="section-title">Лидерборд</h2>
+                    <h2 class="section-title">SUR борд</h2>
                     <div id="leaderboard-container"></div>
                 </div>
                  <div class="section">
-                    <h2 class="section-title">Задания Лиги</h2>
+                    <h2 class="section-title">Задания</h2>
                     <div class="item-button" id="daily-reward-button"><div class="item-icon"><i class="fa-solid fa-calendar-day"></i></div><div class="item-details"><div class="item-title">Ежедневный бонус</div><div class="item-description" id="daily-reward-desc">Заберите свою награду!</div></div></div>
                 </div>
             </div>
@@ -206,12 +186,6 @@
     </div>
 
     <script>
-        // Добавляем обработчик для предотвращения контекстного меню
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            return false;
-        });
-
         const tg = window.Telegram.WebApp;
         try { tg.ready(); tg.expand(); } catch (e) { console.error("TG Web App init failed."); }
         
@@ -222,22 +196,22 @@
 
         // --- Game Configs ---
         const LEAGUES = [
-            { name: "Бронзовая", threshold: 0, color: "#cd7f32" },
-            { name: "Серебряная", threshold: 100000, color: "#c0c0c0" },
-            { name: "Золотая", threshold: 1000000, color: "#ffd700" },
-            { name: "Платиновая", threshold: 10000000, color: "#e5e4e2" },
-            { name: "Алмазная", threshold: 100000000, color: "#b9f2ff" },
+            { name: "Фитнесовая", threshold: 0, color: "#cd7f32" },
+            { name: "Слаломная", threshold: 100000, color: "#c0c0c0" },
+            { name: "Фрискейтовая", threshold: 1000000, color: "#ffd700" },
+            { name: "Агрессивная", threshold: 10000000, color: "#e5e4e2" },
+            { name: "Визардовая", threshold: 100000000, color: "#b9f2ff" },
         ];
         const SKINS = [
-            { id: 'default', name: 'Классика', price: 0, url: 'https://i.postimg.cc/59D4Fjn5/5190567049226645064.png' },
-            { id: 'pirate', name: 'Пират', price: 50000, url: 'https://i.postimg.cc/br6hbXW5/013372f6-c751-4a20-a33a-4f84ef7b2343.png' },
-            { id: 'astro', name: 'Космонавт', price: 250000, url: 'https://i.ibb.co/hZ5yT9k/astro-duck.png' },
-            { id: 'king', name: 'Король Уток', price: 1000000, url: 'https://i.ibb.co/yQWpW5G/king-duck.png' },
-            { id: 'ghost', name: 'Призрак', price: 5000000, url: 'https://i.ibb.co/Y0g0GzG/ghost-duck.png' },
-            { id: 'cosmic', name: 'Космос', price: 25000000, url: 'https://i.ibb.co/zVwD3N7/cosmic-duck.png' },
-            { id: 'singularity', name: 'Чёрная Дыра', price: 100000000, url: 'https://i.ibb.co/W2dJcM4/singularity-duck.png' },
+            { id: 'default', name: 'SUR Классика', price: 0, url: 'https://i.postimg.cc/59D4Fjn5/5190567049226645064.png' },
+            { id: 'pirate', name: 'SUR Lava', price: 50000, url: 'https://i.postimg.cc/cLsWG3Fm/013372f6-c751-4a20-a33a-4f84ef7b2343.png' },
+            { id: 'astro', name: 'SUR Yo Yo', price: 250000, url: 'https://i.ibb.co/hZ5yT9k/astro-duck.png' },
+            { id: 'king', name: 'SUR Advanced', price: 1000000, url: 'https://i.ibb.co/yQWpW5G/king-duck.png' },
+            { id: 'ghost', name: 'SUR Чиловый', price: 5000000, url: 'https://i.ibb.co/Y0g0GzG/ghost-duck.png' },
+            { id: 'cosmic', name: 'SUR Василий', price: 25000000, url: 'https://i.ibb.co/zVwD3N7/cosmic-duck.png' },
+            { id: 'singularity', name: 'SUR Rampage', price: 100000000, url: 'https://i.ibb.co/W2dJcM4/singularity-duck.png' },
         ];
-        const FAKE_LEADERBOARD = [ { name: "TopGamer", score: 120345678 }, { name: "ClickMaster", score: 98765432 }, { name: "DuckFan", score: 54321098 } ];
+        const FAKE_LEADERBOARD = [];
 
         // --- Sound Engine ---
         const sounds = {
